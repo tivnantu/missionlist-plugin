@@ -31,49 +31,55 @@ export interface ChatMessage {
 }
 
 /**
- * 获取 CodeBuddyExtension 数据根目录
+ * 获取 CodeBuddyExtension 数据根目录（支持 macOS / Windows / Linux）
+ * 返回候选路径数组，discoverHistoryRoots 会依次尝试直到找到有效目录。
  */
-function getDataRoot(): string {
-    return path.join(
-        os.homedir(),
-        'AppData',
-        'Local',
-        'CodeBuddyExtension',
-        'Data'
-    );
+function getDataRoots(): string[] {
+    const home = os.homedir();
+    if (process.platform === 'darwin') {
+        return [
+            path.join(home, 'Library', 'Application Support', 'CodeBuddyExtension', 'Data'),
+            path.join(home, 'Library', 'Caches', 'CodeBuddyExtension', 'Data')
+        ];
+    } else if (process.platform === 'win32') {
+        return [path.join(home, 'AppData', 'Local', 'CodeBuddyExtension', 'Data')];
+    } else {
+        // Linux 等
+        return [
+            path.join(home, '.config', 'CodeBuddyExtension', 'Data'),
+            path.join(home, '.codebuddy', 'data')
+        ];
+    }
 }
 
 /**
- * 自动发现所有账户下的 history 目录
- * CodeBuddyExtension 的目录结构为: Data/{userId}/CodeBuddyIDE/{uid}/history/
- * 也兼容旧结构: Data/default/CodeBuddyIDE/history/
+ * 自动发现所有账户下的 history 目录（支持多平台）
  */
 function discoverHistoryRoots(): string[] {
-    const dataRoot = getDataRoot();
+    const dataRoots = getDataRoots();
     const roots: string[] = [];
 
-    if (!fs.existsSync(dataRoot)) {
-        return roots;
-    }
+    for (const dataRoot of dataRoots) {
+        if (!fs.existsSync(dataRoot)) continue;
 
-    const accountDirs = fs.readdirSync(dataRoot, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name);
+        const accountDirs = fs.readdirSync(dataRoot, { withFileTypes: true })
+            .filter(d => d.isDirectory())
+            .map(d => d.name);
 
-    for (const accountId of accountDirs) {
-        const accountPath = path.join(dataRoot, accountId);
+        for (const accountId of accountDirs) {
+            const accountPath = path.join(dataRoot, accountId);
 
-        // 新结构: Data/{userId}/CodeBuddyIDE/{uid}/history/
-        const codeBuddyDir = path.join(accountPath, 'CodeBuddyIDE');
-        if (fs.existsSync(codeBuddyDir)) {
-            const uidDirs = fs.readdirSync(codeBuddyDir, { withFileTypes: true })
-                .filter(d => d.isDirectory())
-                .map(d => d.name);
+            const codeBuddyDir = path.join(accountPath, 'CodeBuddyIDE');
+            if (fs.existsSync(codeBuddyDir)) {
+                const uidDirs = fs.readdirSync(codeBuddyDir, { withFileTypes: true })
+                    .filter(d => d.isDirectory())
+                    .map(d => d.name);
 
-            for (const uid of uidDirs) {
-                const historyPath = path.join(codeBuddyDir, uid, 'history');
-                if (fs.existsSync(historyPath)) {
-                    roots.push(historyPath);
+                for (const uid of uidDirs) {
+                    const historyPath = path.join(codeBuddyDir, uid, 'history');
+                    if (fs.existsSync(historyPath)) {
+                        roots.push(historyPath);
+                    }
                 }
             }
         }

@@ -269,8 +269,17 @@ function scanFromFileSystem(filterHashes?: string[] | null): FileScanResult {
     const seenChatIds = new Set<string>();
     let contentChanged = false;
 
-    const dataRoot = path.join(os.homedir(), 'AppData', 'Local', 'CodeBuddyExtension', 'Data');
-    if (!fs.existsSync(dataRoot)) {
+    const home = os.homedir();
+    let dataRoot: string | null = null;
+    const candidates = process.platform === 'darwin'
+        ? [path.join(home, 'Library', 'Application Support', 'CodeBuddyExtension', 'Data'), path.join(home, 'Library', 'Caches', 'CodeBuddyExtension', 'Data')]
+        : process.platform === 'win32'
+        ? [path.join(home, 'AppData', 'Local', 'CodeBuddyExtension', 'Data')]
+        : [path.join(home, '.config', 'CodeBuddyExtension', 'Data'), path.join(home, '.codebuddy', 'data')];
+    for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) { dataRoot = candidate; break; }
+    }
+    if (!dataRoot) {
         return { runningSessionId: null, fallbackSessionId: null, statusMap, contentChanged };
     }
 
