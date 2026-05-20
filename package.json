@@ -4,6 +4,9 @@
   "description": "在左侧边栏显示 CodeBuddy 历史聊天内容",
   "version": "0.5.9",
   "publisher": "qiuzijian",
+  "license": "MIT",
+  "keywords": ["codebuddy", "chat", "history", "AI"],
+  "icon": "resources/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/qiuzijian/codebuddy-history-viewer.git"
